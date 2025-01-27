@@ -11,52 +11,77 @@ contract FileStorage {
         uint256 timestamp;
         bool isActive;
         uint256 price;
+        string category;        // Added for financial categorization
+        string description;     // Added for transaction details
+        uint256 budgetLimit;   // Added for budget tracking
     }
 
     mapping(uint256 => FileData) public files;
     uint256 public fileCount;
     mapping(address => uint256) public userBalances;
     mapping(address => uint256[]) private userFiles;
+    mapping(address => uint256) public userBudgets;    // Added for budget tracking
 
-    // Events requirement
     event FileUploaded(
         address indexed owner,
         uint256 indexed fileId,
         string name,
-        uint256 size,
+        string category,
+        uint256 amount,
         uint256 timestamp
     );
     
-    event FileAccessGranted(
-        uint256 indexed fileId,
-        address indexed grantedTo,
+    event BudgetUpdated(
+        address indexed user,
+        uint256 newBudget,
         uint256 timestamp
     );
 
-    // State-changing function
-    function addFile(string memory _name, string memory _hash, uint256 _size) public returns (FileData memory) {
+    function addFinancialRecord(
+        string memory _name,
+        string memory _hash,
+        uint256 _amount,
+        string memory _category,
+        string memory _description
+    ) public returns (FileData memory) {
         fileCount++;
         
         FileData memory newFile = FileData({
             id: fileCount,
             name: _name,
             hash: _hash,
-            size: _size,
+            size: _amount,
             owner: msg.sender,
             timestamp: block.timestamp,
             isActive: true,
-            price: 0
+            price: 0,
+            category: _category,
+            description: _description,
+            budgetLimit: 0
         });
 
         files[fileCount] = newFile;
         userFiles[msg.sender].push(fileCount);
-        emit FileUploaded(msg.sender, fileCount, _name, _size, block.timestamp);
+        
+        emit FileUploaded(
+            msg.sender,
+            fileCount,
+            _name,
+            _category,
+            _amount,
+            block.timestamp
+        );
         
         return newFile;
     }
 
-    // New function returning array of structs
-    function getUserFiles(address _user) public view returns (FileData[] memory) {
+    function setBudget(uint256 _amount) public {
+        require(_amount > 0, "Budget must be positive");
+        userBudgets[msg.sender] = _amount;
+        emit BudgetUpdated(msg.sender, _amount, block.timestamp);
+    }
+
+    function getUserRecords(address _user) public view returns (FileData[] memory) {
         uint256[] memory userFileIds = userFiles[_user];
         FileData[] memory result = new FileData[](userFileIds.length);
         
@@ -67,22 +92,6 @@ contract FileStorage {
         return result;
     }
 
-    // Read-only function (view)
-    function getFile(uint256 _id) public view returns (FileData memory) {
-        require(_id > 0 && _id <= fileCount, "Invalid file ID");
-        return files[_id];
-    }
-
-    // Payable function
-    function purchaseAccess(uint256 _fileId) public payable {
-        require(_fileId > 0 && _fileId <= fileCount, "Invalid file ID");
-        require(msg.value >= files[_fileId].price, "Insufficient payment");
-        
-        userBalances[files[_fileId].owner] += msg.value;
-        emit FileAccessGranted(_fileId, msg.sender, block.timestamp);
-    }
-
-    // Additional helper function
     function withdrawBalance() public {
         uint256 balance = userBalances[msg.sender];
         require(balance > 0, "No balance to withdraw");
