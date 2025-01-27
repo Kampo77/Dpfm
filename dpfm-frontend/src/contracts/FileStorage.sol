@@ -1,102 +1,86 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract FileStorage {
-    struct FileData {
+contract FinancialManager {
+    struct Transaction {
         uint256 id;
-        string name;
-        string hash;
-        uint256 size;
-        address owner;
+        address user;
+        uint256 amount;
+        string category;
+        string description;
         uint256 timestamp;
-        bool isActive;
-        uint256 price;
-        string category;        // Added for financial categorization
-        string description;     // Added for transaction details
-        uint256 budgetLimit;   // Added for budget tracking
+        bool isIncome;
     }
 
-    mapping(uint256 => FileData) public files;
-    uint256 public fileCount;
-    mapping(address => uint256) public userBalances;
-    mapping(address => uint256[]) private userFiles;
-    mapping(address => uint256) public userBudgets;    // Added for budget tracking
+    struct Budget {
+        uint256 limit;
+        mapping(string => uint256) categoryLimits;
+        uint256 totalSpent;
+    }
 
-    event FileUploaded(
-        address indexed owner,
-        uint256 indexed fileId,
-        string name,
-        string category,
+    mapping(address => Transaction[]) private userTransactions;
+    mapping(address => Budget) private userBudgets;
+    uint256 private transactionCount;
+
+    event TransactionAdded(
+        address indexed user,
+        uint256 indexed id,
         uint256 amount,
-        uint256 timestamp
+        string category,
+        bool isIncome
     );
-    
+
     event BudgetUpdated(
         address indexed user,
-        uint256 newBudget,
-        uint256 timestamp
+        uint256 newLimit,
+        string category
     );
 
-    function addFinancialRecord(
-        string memory _name,
-        string memory _hash,
+    function addTransaction(
         uint256 _amount,
         string memory _category,
-        string memory _description
-    ) public returns (FileData memory) {
-        fileCount++;
+        string memory _description,
+        bool _isIncome
+    ) public returns (Transaction memory) {
+        require(_amount > 0, "Amount must be positive");
         
-        FileData memory newFile = FileData({
-            id: fileCount,
-            name: _name,
-            hash: _hash,
-            size: _amount,
-            owner: msg.sender,
-            timestamp: block.timestamp,
-            isActive: true,
-            price: 0,
+        transactionCount++;
+        Transaction memory newTx = Transaction({
+            id: transactionCount,
+            user: msg.sender,
+            amount: _amount,
             category: _category,
             description: _description,
-            budgetLimit: 0
+            timestamp: block.timestamp,
+            isIncome: _isIncome
         });
 
-        files[fileCount] = newFile;
-        userFiles[msg.sender].push(fileCount);
+        userTransactions[msg.sender].push(newTx);
         
-        emit FileUploaded(
-            msg.sender,
-            fileCount,
-            _name,
-            _category,
-            _amount,
-            block.timestamp
-        );
-        
-        return newFile;
-    }
-
-    function setBudget(uint256 _amount) public {
-        require(_amount > 0, "Budget must be positive");
-        userBudgets[msg.sender] = _amount;
-        emit BudgetUpdated(msg.sender, _amount, block.timestamp);
-    }
-
-    function getUserRecords(address _user) public view returns (FileData[] memory) {
-        uint256[] memory userFileIds = userFiles[_user];
-        FileData[] memory result = new FileData[](userFileIds.length);
-        
-        for (uint256 i = 0; i < userFileIds.length; i++) {
-            result[i] = files[userFileIds[i]];
+        if (!_isIncome) {
+            require(
+                userBudgets[msg.sender].totalSpent + _amount <= userBudgets[msg.sender].limit,
+                "Exceeds budget limit"
+            );
+            userBudgets[msg.sender].totalSpent += _amount;
         }
-        
-        return result;
+
+        emit TransactionAdded(msg.sender, transactionCount, _amount, _category, _isIncome);
+        return newTx;
     }
 
-    function withdrawBalance() public {
-        uint256 balance = userBalances[msg.sender];
-        require(balance > 0, "No balance to withdraw");
-        
-        userBalances[msg.sender] = 0;
-        payable(msg.sender).transfer(balance);
+    function setBudget(uint256 _limit, string memory _category) public {
+        require(_limit > 0, "Budget must be positive");
+        userBudgets[msg.sender].limit = _limit;
+        userBudgets[msg.sender].categoryLimits[_category] = _limit;
+        emit BudgetUpdated(msg.sender, _limit, _category);
+    }
+
+    function getUserTransactions() public view returns (Transaction[] memory) {
+        return userTransactions[msg.sender];
+    }
+
+    function getBudgetLimit() public view returns (uint256) {
+        return userBudgets[msg.sender].limit;
     }
 }
