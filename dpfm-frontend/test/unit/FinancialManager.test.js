@@ -315,4 +315,21 @@ describe("FinancialManager", function () {
       expect(failedTx.length).to.equal(0);
     });
   });
+
+  describe("Function Return Values", () => {
+    // Transaction return values
+    // Budget limits
+    // State changes
+  });
+
+  describe("Event Emission", () => {
+    // Transaction events
+    // Budget update events
+  });
+
+  describe("Error Handling", () => {
+    // Input validation
+    // Access control
+    // Edge cases
+  });
 });
