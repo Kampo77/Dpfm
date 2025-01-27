@@ -1,24 +1,42 @@
-import logo from './logo.svg';
+import React, { useState } from 'react';
 import './App.css';
+import { ThemeProvider, createTheme, CssBaseline, Container } from '@mui/material';
+import Navbar from './components/Layout/Navbar';
+import TransactionForm from './components/Transaction/TransactionForm';
+import TransactionHistory from './components/Transaction/TransactionHistory';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import LoadingOverlay from './components/common/LoadingOverlay';
 
 function App() {
+  const [mode, setMode] = useState('light');
+
+  const theme = createTheme({
+    palette: {
+      mode,
+      primary: {
+        main: '#1976d2',
+      },
+    },
+  });
+
+  const toggleTheme = () => {
+    setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <div className="App">
+          <Navbar toggleTheme={toggleTheme} />
+          <Container>
+            <TransactionForm />
+            <TransactionHistory />
+          </Container>
+          <LoadingOverlay open={false} />
+        </div>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
