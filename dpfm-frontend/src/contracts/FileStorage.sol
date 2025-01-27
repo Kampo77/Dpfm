@@ -21,6 +21,7 @@ contract FinancialManager {
     mapping(address => Transaction[]) private userTransactions;
     mapping(address => Budget) private userBudgets;
     uint256 private transactionCount;
+    address private owner;
 
     event TransactionAdded(
         address indexed user,
@@ -67,6 +68,29 @@ contract FinancialManager {
 
         emit TransactionAdded(msg.sender, transactionCount, _amount, _category, _isIncome);
         return newTx;
+    }
+
+    // Add new payable function
+    function addPaidTransaction(
+        uint256 _amount,
+        string memory _category,
+        string memory _description,
+        bool _isIncome
+    ) public payable returns (Transaction memory) {
+        require(msg.value >= 0.01 ether, "Insufficient fee");
+        
+        Transaction memory newTx = addTransaction(_amount, _category, _description, _isIncome);
+        
+        // Transfer fee to contract
+        payable(address(this)).transfer(msg.value);
+        
+        return newTx;
+    }
+
+    // Add withdrawal function
+    function withdrawFees() public {
+        require(msg.sender == owner, "Only owner can withdraw fees");
+        payable(owner).transfer(address(this).balance);
     }
 
     function setBudget(uint256 _limit, string memory _category) public {
