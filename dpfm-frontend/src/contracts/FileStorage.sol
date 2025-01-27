@@ -16,6 +16,7 @@ contract FileStorage {
     mapping(uint256 => FileData) public files;
     uint256 public fileCount;
     mapping(address => uint256) public userBalances;
+    mapping(address => uint256[]) private userFiles;
 
     // Events requirement
     event FileUploaded(
@@ -48,9 +49,28 @@ contract FileStorage {
         });
 
         files[fileCount] = newFile;
+        userFiles[msg.sender].push(fileCount);
         emit FileUploaded(msg.sender, fileCount, _name, _size, block.timestamp);
         
         return newFile;
+    }
+
+    // New function returning array of structs
+    function getUserFiles(address _user) public view returns (FileData[] memory) {
+        uint256[] memory userFileIds = userFiles[_user];
+        FileData[] memory result = new FileData[](userFileIds.length);
+        
+        for (uint256 i = 0; i < userFileIds.length; i++) {
+            result[i] = files[userFileIds[i]];
+        }
+        
+        return result;
+    }
+
+    // Read-only function (view)
+    function getFile(uint256 _id) public view returns (FileData memory) {
+        require(_id > 0 && _id <= fileCount, "Invalid file ID");
+        return files[_id];
     }
 
     // Payable function
@@ -60,12 +80,6 @@ contract FileStorage {
         
         userBalances[files[_fileId].owner] += msg.value;
         emit FileAccessGranted(_fileId, msg.sender, block.timestamp);
-    }
-
-    // Read-only function (view)
-    function getFile(uint256 _id) public view returns (FileData memory) {
-        require(_id > 0 && _id <= fileCount, "Invalid file ID");
-        return files[_id];
     }
 
     // Additional helper function
