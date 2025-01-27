@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   List, 
   ListItem, 
   ListItemText, 
   Paper, 
   Typography,
-  Skeleton 
+  Skeleton,
+  Fade
 } from '@mui/material';
 import { useTransactionEvents } from '../../hooks/useTransactionEvents';
 
 const TransactionList = () => {
   const { transactions, loading } = useTransactionEvents();
+  const [newItems, setNewItems] = useState([]);
+
+  useEffect(() => {
+    setNewItems(transactions);
+  }, [transactions]);
 
   if (loading) {
     return (
@@ -25,19 +31,21 @@ const TransactionList = () => {
   return (
     <Paper sx={{ p: 2, mt: 2 }}>
       <Typography variant="h6" gutterBottom>
-        Recent Transactions
+        Transaction History
       </Typography>
       <List>
-        {transactions.map((tx) => (
-          <ListItem key={tx.id} divider>
-            <ListItemText
-              primary={`${tx.amount} ETH - ${tx.category}`}
-              secondary={new Date(tx.timestamp).toLocaleString()}
-              sx={{
-                color: tx.isIncome ? 'success.main' : 'error.main'
-              }}
-            />
-          </ListItem>
+        {newItems.map((tx) => (
+          <Fade in key={tx.id}>
+            <ListItem divider>
+              <ListItemText
+                primary={`${tx.amount} ETH - ${tx.category}`}
+                secondary={new Date(tx.timestamp).toLocaleString()}
+                sx={{
+                  color: tx.isIncome ? 'success.main' : 'error.main'
+                }}
+              />
+            </ListItem>
+          </Fade>
         ))}
       </List>
     </Paper>

@@ -20,14 +20,15 @@ export const useTransactionEvents = () => {
       }
     };
 
-    const handleNewTransaction = (user, id, amount, category, isIncome) => {
+    const handleNewTransaction = async (user, id, amount, category, isIncome, event) => {
+      const block = await event.getBlock();
       setTransactions(prev => [...prev, {
         id: id.toString(),
         user,
         amount,
         category,
         isIncome,
-        timestamp: Date.now()
+        timestamp: block.timestamp * 1000
       }]);
     };
 
