@@ -5,12 +5,31 @@ import {
   ListItemText, 
   Paper, 
   Typography,
-  Skeleton
+  Skeleton,
+  Alert
 } from '@mui/material';
 import { useTransactionEvents } from '../../hooks/useTransactionEvents';
+import { useWeb3 } from '../../context/Web3Context';
 
 const TransactionHistory = () => {
   const { transactions, loading } = useTransactionEvents();
+  const { provider, account, error } = useWeb3();
+
+  if (!provider || !account) {
+    return (
+      <Alert severity="info">
+        Please connect your wallet
+      </Alert>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert severity="error">
+        {error}
+      </Alert>
+    );
+  }
 
   if (loading) {
     return (
