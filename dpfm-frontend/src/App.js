@@ -3,6 +3,9 @@ import './App.css';
 import { ThemeProvider, createTheme, CssBaseline, Container } from '@mui/material';
 import Navbar from './components/Layout/Navbar';
 import TransactionForm from './components/Transaction/TransactionForm';
+import TransactionHistory from './components/Transaction/TransactionHistory';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import LoadingOverlay from './components/common/LoadingOverlay';
 
 function App() {
   const [mode, setMode] = useState('light');
@@ -21,15 +24,19 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <div className="App">
-        <Navbar toggleTheme={toggleTheme} />
-        <Container>
-          <TransactionForm />
-        </Container>
-      </div>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <div className="App">
+          <Navbar toggleTheme={toggleTheme} />
+          <Container>
+            <TransactionForm />
+            <TransactionHistory />
+          </Container>
+          <LoadingOverlay open={false} />
+        </div>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
