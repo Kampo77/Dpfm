@@ -10,12 +10,14 @@ contract FileStorage {
         address owner;
         uint256 timestamp;
         bool isActive;
+        uint256 price;
     }
 
     mapping(uint256 => FileData) public files;
     uint256 public fileCount;
+    mapping(address => uint256) public userBalances;
 
-    // Two required events
+    // Events requirement
     event FileUploaded(
         address indexed owner,
         uint256 indexed fileId,
@@ -30,6 +32,7 @@ contract FileStorage {
         uint256 timestamp
     );
 
+    // State-changing function
     function addFile(string memory _name, string memory _hash, uint256 _size) public returns (FileData memory) {
         fileCount++;
         
@@ -40,38 +43,37 @@ contract FileStorage {
             size: _size,
             owner: msg.sender,
             timestamp: block.timestamp,
-            isActive: true
+            isActive: true,
+            price: 0
         });
 
         files[fileCount] = newFile;
-        
-        // Emit first event
-        emit FileUploaded(
-            msg.sender,
-            fileCount,
-            _name,
-            _size,
-            block.timestamp
-        );
+        emit FileUploaded(msg.sender, fileCount, _name, _size, block.timestamp);
         
         return newFile;
     }
 
-    function grantAccess(uint256 _fileId, address _user) public {
+    // Payable function
+    function purchaseAccess(uint256 _fileId) public payable {
         require(_fileId > 0 && _fileId <= fileCount, "Invalid file ID");
-        require(files[_fileId].owner == msg.sender, "Not the file owner");
-        require(_user != address(0), "Invalid address");
+        require(msg.value >= files[_fileId].price, "Insufficient payment");
         
-        // Emit second event
-        emit FileAccessGranted(
-            _fileId,
-            _user,
-            block.timestamp
-        );
+        userBalances[files[_fileId].owner] += msg.value;
+        emit FileAccessGranted(_fileId, msg.sender, block.timestamp);
     }
 
+    // Read-only function (view)
     function getFile(uint256 _id) public view returns (FileData memory) {
         require(_id > 0 && _id <= fileCount, "Invalid file ID");
         return files[_id];
+    }
+
+    // Additional helper function
+    function withdrawBalance() public {
+        uint256 balance = userBalances[msg.sender];
+        require(balance > 0, "No balance to withdraw");
+        
+        userBalances[msg.sender] = 0;
+        payable(msg.sender).transfer(balance);
     }
 }
