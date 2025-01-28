@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import './App.css';
-import { ThemeProvider, createTheme, CssBaseline, Container } from '@mui/material';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { Web3Provider } from './context/Web3Context';
+import { BudgetProvider } from './context/BudgetContext';
 import Navbar from './components/Layout/Navbar';
-import TransactionForm from './components/Transaction/TransactionForm';
-import TransactionHistory from './components/Transaction/TransactionHistory';
-import ErrorBoundary from './components/common/ErrorBoundary';
-import LoadingOverlay from './components/common/LoadingOverlay';
+import BudgetDashboard from './pages/Budget/BudgetDashboard';
 
 function App() {
   const [mode, setMode] = useState('light');
@@ -13,30 +12,29 @@ function App() {
   const theme = createTheme({
     palette: {
       mode,
-      primary: {
-        main: '#1976d2',
-      },
+      primary: { main: '#1976d2' },
     },
   });
 
-  const toggleTheme = () => {
-    setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
+  const handleThemeToggle = () => {
+    setMode((prevMode) => prevMode === 'light' ? 'dark' : 'light');
   };
 
   return (
-    <ErrorBoundary>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <div className="App">
-          <Navbar toggleTheme={toggleTheme} />
-          <Container>
-            <TransactionForm />
-            <TransactionHistory />
-          </Container>
-          <LoadingOverlay open={false} />
-        </div>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <Web3Provider>
+      <BudgetProvider>
+        <BrowserRouter>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <Navbar toggleTheme={handleThemeToggle} />
+            <Routes>
+              <Route path="/" element={<BudgetDashboard />} />
+              <Route path="/budget" element={<BudgetDashboard />} />
+            </Routes>
+          </ThemeProvider>
+        </BrowserRouter>
+      </BudgetProvider>
+    </Web3Provider>
   );
 }
 

@@ -1,76 +1,70 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import FinancialManager from '../contracts/FileStorage.json';
 
-const Web3Context = createContext();
+export const Web3Context = createContext();
 
 export const Web3Provider = ({ children }) => {
-  const [contract, setContract] = useState(null);
   const [provider, setProvider] = useState(null);
   const [account, setAccount] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
 
-  const initializeWeb3 = async () => {
+  const connectWallet = async () => {
+    console.log('Connecting wallet...');
     try {
-      if (!window.ethereum) {
-        throw new Error('MetaMask not installed');
-      }
-
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const accounts = await provider.send('eth_requestAccounts', []);
-      const signer = provider.getSigner();
-      
-      const contract = new ethers.Contract(
-        process.env.REACT_APP_CONTRACT_ADDRESS,
-        FinancialManager.abi,
-        signer
-      );
-
-      setProvider(provider);
-      setContract(contract);
-      setAccount(accounts[0]);
-
-      // Listen for account changes
-      window.ethereum.on('accountsChanged', (accounts) => {
+      if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const accounts = await window.ethereum.request({ 
+          method: 'eth_requestAccounts' 
+        });
+        
+        setProvider(provider);
         setAccount(accounts[0]);
-      });
-
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+        setIsConnected(true);
+        
+        console.log('Wallet connected:', { account: accounts[0] });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Connection error:', error);
+      return false;
     }
   };
 
   useEffect(() => {
-    initializeWeb3();
-    return () => {
+    const init = async () => {
+      console.log('Initializing Web3Context...');
       if (window.ethereum) {
-        window.ethereum.removeAllListeners();
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          console.log('Found existing connection:', accounts[0]);
+          await connectWallet();
+        }
       }
     };
+
+    init();
+
+    window.ethereum?.on('accountsChanged', async (accounts) => {
+      console.log('Account changed:', accounts);
+      if (accounts.length > 0) {
+        await connectWallet();
+      } else {
+        setProvider(null);
+        setAccount('');
+        setIsConnected(false);
+      }
+    });
   }, []);
 
-  const connectWallet = async () => {
-    try {
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts'
-      });
-      setAccount(accounts[0]);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
   const value = {
-    contract,
     provider,
     account,
-    loading,
-    error,
+    isConnected,
     connectWallet
   };
+
+  console.log('Web3Context state:', value);
 
   return (
     <Web3Context.Provider value={value}>
@@ -79,12 +73,6 @@ export const Web3Provider = ({ children }) => {
   );
 };
 
-export const useWeb3 = () => {
-  const context = useContext(Web3Context);
-  if (!context) {
-    throw new Error('useWeb3 must be used within a Web3Provider');
-  }
-  return context;
-};
+export const useWeb3 = () => useContext(Web3Context);
 
 export default Web3Context;

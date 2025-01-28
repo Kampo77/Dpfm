@@ -11,12 +11,9 @@ import {
   MenuItem,
   CircularProgress,
   useMediaQuery,
-  useTheme,
   Snackbar,
   Alert,
-  Tooltip,
-  Fade,
-  Zoom
+  Tooltip
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -24,6 +21,7 @@ import {
   Brightness4,
   Brightness7
 } from '@mui/icons-material';
+import { useTheme } from '@mui/material/styles';
 
 const Navbar = ({ toggleTheme }) => {
   const theme = useTheme();
@@ -37,10 +35,17 @@ const Navbar = ({ toggleTheme }) => {
     return saved ? JSON.parse(saved) : { theme: 'light' };
   });
 
-  // Save preferences to localStorage
   useEffect(() => {
     localStorage.setItem('userPreferences', JSON.stringify(userPreferences));
   }, [userPreferences]);
+
+  const handleThemeToggle = () => {
+    setUserPreferences(prev => ({
+      ...prev,
+      theme: prev.theme === 'light' ? 'dark' : 'light'
+    }));
+    toggleTheme();
+  };
 
   const handleMobileMenuOpen = (event) => {
     setMobileMenuAnchor(event.currentTarget);
@@ -62,6 +67,7 @@ const Navbar = ({ toggleTheme }) => {
         method: 'eth_requestAccounts'
       });
       setWalletAddress(accounts[0]);
+      handleMobileMenuClose();
     } catch (err) {
       setError('Failed to connect wallet: ' + err.message);
     } finally {
@@ -70,110 +76,77 @@ const Navbar = ({ toggleTheme }) => {
   };
 
   return (
-    <>
-      <AppBar position="static" elevation={2}>
-        <Toolbar>
-          <Zoom in={true} style={{ transitionDelay: '100ms' }}>
-            <Typography variant="h6" sx={{ flexGrow: 1 }}>
-              dPFM
-            </Typography>
-          </Zoom>
-
-          {isMobile ? (
-            <Fade in={true}>
-              <>
-                <IconButton
-                  edge="start"
-                  color="inherit"
-                  aria-label="menu"
-                  onClick={handleMobileMenuOpen}
-                  sx={{ mr: 2 }}
-                >
-                  <MenuIcon />
-                </IconButton>
-                <Menu
-                  anchorEl={mobileMenuAnchor}
-                  open={Boolean(mobileMenuAnchor)}
-                  onClose={handleMobileMenuClose}
-                >
-                  <MenuItem onClick={handleMobileMenuClose}>Dashboard</MenuItem>
-                  <MenuItem onClick={handleMobileMenuClose}>Transactions</MenuItem>
-                  <MenuItem onClick={handleMobileMenuClose}>Budget</MenuItem>
-                  <MenuItem onClick={handleMobileMenuClose}>Settings</MenuItem>
-                </Menu>
-              </>
-            </Fade>
-          ) : (
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <Fade in={true} style={{ transitionDelay: '200ms' }}>
-                <Tooltip title="View your dashboard" arrow placement="bottom">
-                  <Button color="inherit">Dashboard</Button>
-                </Tooltip>
-              </Fade>
-              <Fade in={true} style={{ transitionDelay: '300ms' }}>
-                <Tooltip title="Manage transactions" arrow placement="bottom">
-                  <Button color="inherit">Transactions</Button>
-                </Tooltip>
-              </Fade>
-              <Fade in={true} style={{ transitionDelay: '400ms' }}>
-                <Tooltip title="Set your budget" arrow placement="bottom">
-                  <Button color="inherit">Budget</Button>
-                </Tooltip>
-              </Fade>
-            </Box>
-          )}
-
-          <Fade in={true} style={{ transitionDelay: '500ms' }}>
-            <Tooltip title="Switch theme" arrow placement="bottom">
-              <IconButton 
-                color="inherit" 
-                onClick={() => {
-                  toggleTheme();
-                  setUserPreferences(prev => ({
-                    ...prev,
-                    theme: prev.theme === 'light' ? 'dark' : 'light'
-                  }));
-                }}
-                sx={{ ml: 1 }}
-              >
+    <AppBar position="static">
+      <Toolbar>
+        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          DpFm Portfolio Manager
+        </Typography>
+        
+        {isMobile ? (
+          <>
+            <IconButton
+              color="inherit"
+              onClick={handleMobileMenuOpen}
+              aria-label="menu"
+            >
+              <MenuIcon />
+            </IconButton>
+            <Menu
+              anchorEl={mobileMenuAnchor}
+              open={Boolean(mobileMenuAnchor)}
+              onClose={handleMobileMenuClose}
+              TransitionProps={{ timeout: 200 }}
+            >
+              <MenuItem onClick={handleThemeToggle}>
+                {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+                <Typography sx={{ ml: 1 }}>Toggle Theme</Typography>
+              </MenuItem>
+              <MenuItem onClick={connectWallet} disabled={isConnecting}>
+                <AccountBalanceWallet />
+                <Typography sx={{ ml: 1 }}>
+                  {isConnecting ? 'Connecting...' : 
+                    walletAddress ? 
+                    `${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}` : 
+                    'Connect Wallet'
+                  }
+                </Typography>
+              </MenuItem>
+            </Menu>
+          </>
+        ) : (
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              color="inherit"
+              onClick={connectWallet}
+              disabled={isConnecting}
+              startIcon={isConnecting ? 
+                <CircularProgress size={20} color="inherit" /> : 
+                <AccountBalanceWallet />
+              }
+            >
+              {walletAddress ? 
+                `${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}` : 
+                'Connect Wallet'
+              }
+            </Button>
+            <Tooltip title={`Switch to ${theme.palette.mode === 'dark' ? 'light' : 'dark'} mode`}>
+              <IconButton onClick={handleThemeToggle} color="inherit">
                 {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
               </IconButton>
             </Tooltip>
-          </Fade>
-
-          <Fade in={true} style={{ transitionDelay: '600ms' }}>
-            <Tooltip 
-              title={walletAddress ? "Connected wallet" : "Connect your wallet"} 
-              arrow 
-              placement="bottom"
-            >
-              <Button
-                color="inherit"
-                startIcon={isConnecting ? <CircularProgress size={20} color="inherit" /> : <AccountBalanceWallet />}
-                onClick={connectWallet}
-                disabled={isConnecting}
-                sx={{ ml: 1 }}
-              >
-                {walletAddress 
-                  ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-                  : 'Connect Wallet'}
-              </Button>
-            </Tooltip>
-          </Fade>
-        </Toolbar>
-      </AppBar>
-
+          </Box>
+        )}
+      </Toolbar>
       <Snackbar 
-        open={!!error} 
+        open={Boolean(error)} 
         autoHideDuration={6000} 
         onClose={() => setError('')}
-        TransitionComponent={Fade}
       >
         <Alert severity="error" onClose={() => setError('')}>
           {error}
         </Alert>
       </Snackbar>
-    </>
+    </AppBar>
   );
 };
 
