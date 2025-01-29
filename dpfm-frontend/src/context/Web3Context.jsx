@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import { SUPPORTED_CHAIN_ID } from '../config/contracts';
 
 export const Web3Context = createContext();
 
@@ -7,67 +8,94 @@ export const Web3Provider = ({ children }) => {
   const [provider, setProvider] = useState(null);
   const [account, setAccount] = useState('');
   const [isConnected, setIsConnected] = useState(false);
+  const [chainId, setChainId] = useState(null);
 
   const connectWallet = async () => {
     console.log('Connecting wallet...');
     try {
       if (window.ethereum) {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const network = await provider.getNetwork();
+        
+        if (network.chainId !== SUPPORTED_CHAIN_ID) {
+          throw new Error('Please connect to Sepolia testnet');
+        }
+
         const accounts = await window.ethereum.request({ 
           method: 'eth_requestAccounts' 
         });
         
-        setProvider(provider);
-        setAccount(accounts[0]);
-        setIsConnected(true);
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
         
-        console.log('Wallet connected:', { account: accounts[0] });
+        setProvider(provider);
+        setAccount(address);
+        setIsConnected(true);
+        setChainId(network.chainId);
+        
         return true;
       }
       return false;
     } catch (error) {
       console.error('Connection error:', error);
-      return false;
+      throw error;
     }
   };
 
   useEffect(() => {
     const init = async () => {
-      console.log('Initializing Web3Context...');
       if (window.ethereum) {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-          console.log('Found existing connection:', accounts[0]);
-          await connectWallet();
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const network = await provider.getNetwork();
+          setChainId(network.chainId);
+          
+          const accounts = await window.ethereum.request({ 
+            method: 'eth_accounts' 
+          });
+          
+          if (accounts.length > 0) {
+            const signer = provider.getSigner();
+            const address = await signer.getAddress();
+            
+            setProvider(provider);
+            setAccount(address);
+            setIsConnected(true);
+            
+            console.log('Initialized:', { 
+              account: address,
+              chainId: network.chainId 
+            });
+          }
+        } catch (error) {
+          console.error('Initialization error:', error);
         }
       }
     };
 
     init();
 
-    window.ethereum?.on('accountsChanged', async (accounts) => {
-      console.log('Account changed:', accounts);
-      if (accounts.length > 0) {
-        await connectWallet();
-      } else {
-        setProvider(null);
-        setAccount('');
-        setIsConnected(false);
+    if (window.ethereum) {
+      window.ethereum.on('chainChanged', connectWallet);
+      window.ethereum.on('accountsChanged', connectWallet);
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener('chainChanged', connectWallet);
+        window.ethereum.removeListener('accountsChanged', connectWallet);
       }
-    });
+    };
   }, []);
 
-  const value = {
-    provider,
-    account,
-    isConnected,
-    connectWallet
-  };
-
-  console.log('Web3Context state:', value);
-
   return (
-    <Web3Context.Provider value={value}>
+    <Web3Context.Provider value={{
+      provider,
+      account,
+      isConnected,
+      chainId,
+      connectWallet
+    }}>
       {children}
     </Web3Context.Provider>
   );

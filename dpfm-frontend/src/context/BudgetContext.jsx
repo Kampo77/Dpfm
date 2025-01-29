@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { CONTRACT_ADDRESS, ABI } from '../contracts/config';
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contracts';
 import { useWeb3 } from './Web3Context';
 
 export const BudgetContext = createContext();
@@ -13,7 +13,7 @@ export const BudgetProvider = ({ children }) => {
   const fetchBudgets = useCallback(async () => {
     if (!provider || !account) return;
     try {
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
       const categories = ['food', 'transport', 'utilities', 'entertainment'];
       
       const budgetPromises = categories.map(category => 
@@ -49,12 +49,21 @@ export const BudgetProvider = ({ children }) => {
 
   const setBudget = async (category, amount) => {
     try {
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider.getSigner());
+      if (!provider || !account) throw new Error('Wallet not connected');
+      
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        CONTRACT_ABI,
+        provider.getSigner()
+      );
+      
       const tx = await contract.setBudget(amount, category);
       await tx.wait();
-      await fetchBudgets();
+      
+      return true;
     } catch (error) {
-      throw new Error('Failed to set budget: ' + error.message);
+      console.error('Set budget error:', error);
+      throw error;
     }
   };
 
