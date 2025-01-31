@@ -11,8 +11,18 @@ import { Edit as EditIcon } from '@mui/icons-material';
 import { ethers } from 'ethers';
 
 const BudgetCard = ({ category, budget, spending, onEdit }) => {
+  // Debug logs
+  console.log('BudgetCard render:', {
+    category: category.id,
+    budget: budget?.toString(),
+    spending: spending?.toString()
+  });
+
+  // Format values
+  const formattedBudget = budget ? ethers.utils.formatEther(budget) : '0.0';
+  const formattedSpending = spending ? ethers.utils.formatEther(spending) : '0.0';
   const progress = budget ? (Number(spending || 0) / Number(budget)) * 100 : 0;
-  
+
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
@@ -26,11 +36,11 @@ const BudgetCard = ({ category, budget, spending, onEdit }) => {
         </Box>
 
         <Typography variant="h4" component="div">
-          {ethers.utils.formatEther(budget || '0')} ETH
+          {formattedBudget} ETH
         </Typography>
         
         <Typography color="text.secondary" gutterBottom>
-          Spent: {ethers.utils.formatEther(spending || '0')} ETH
+          Spent: {formattedSpending} ETH
         </Typography>
 
         <LinearProgress

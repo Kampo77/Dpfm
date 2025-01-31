@@ -10,34 +10,68 @@ export const Web3Provider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [chainId, setChainId] = useState(null);
 
+  const switchToSepolia = async () => {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${SUPPORTED_CHAIN_ID.toString(16)}` }],
+      });
+      return true;
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: `0x${SUPPORTED_CHAIN_ID.toString(16)}`,
+              chainName: 'Sepolia',
+              nativeCurrency: {
+                name: 'ETH',
+                symbol: 'ETH',
+                decimals: 18
+              },
+              rpcUrls: ['https://sepolia.infura.io/v3/'],
+              blockExplorerUrls: ['https://sepolia.etherscan.io']
+            }]
+          });
+          return true;
+        } catch (addError) {
+          throw new Error('Failed to add Sepolia network');
+        }
+      }
+      throw new Error('Failed to switch to Sepolia network');
+    }
+  };
+
   const connectWallet = async () => {
     console.log('Connecting wallet...');
     try {
-      if (window.ethereum) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const network = await provider.getNetwork();
-        
-        if (network.chainId !== SUPPORTED_CHAIN_ID) {
-          throw new Error('Please connect to Sepolia testnet');
-        }
-
-        const accounts = await window.ethereum.request({ 
-          method: 'eth_requestAccounts' 
-        });
-        
-        const signer = provider.getSigner();
-        const address = await signer.getAddress();
-        
-        setProvider(provider);
-        setAccount(address);
-        setIsConnected(true);
-        setChainId(network.chainId);
-        
-        return true;
+      if (!window.ethereum) {
+        throw new Error('MetaMask is not installed');
       }
-      return false;
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const network = await provider.getNetwork();
+      
+      if (network.chainId !== SUPPORTED_CHAIN_ID) {
+        await switchToSepolia();
+      }
+
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+      
+      setProvider(provider);
+      setAccount(address);
+      setIsConnected(true);
+      setChainId(network.chainId);
+      
+      return true;
     } catch (error) {
-      console.error('Connection error:', error);
+      console.error('Wallet connection error:', error);
       throw error;
     }
   };
