@@ -7,6 +7,7 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.1",
     "@mui/material": "^6.4.1",
+    "@openzeppelin/contracts": "^5.2.0",
     "@web3-react/core": "^8.2.3",
     "cra-template": "1.2.0",
     "ethers": "^5.7.2",
@@ -41,5 +42,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-waffle": "^2.0.6"
   }
 }
