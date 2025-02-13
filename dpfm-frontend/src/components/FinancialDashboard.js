@@ -26,6 +26,7 @@ import ConfirmationDialog from './ConfirmationDialog';
 import { ROLES } from '../utils/permissionManager';
 import RoleBasedComponent from './RoleBasedComponent';
 import { Web3Handler } from '../utils/web3Handler';
+import EventViewer from './EventViewer';
 
 const FinancialDashboard = ({ contractAddress, userRole }) => {
   const { showNotification } = useNotification();
@@ -267,6 +268,7 @@ const FinancialDashboard = ({ contractAddress, userRole }) => {
         </Grid>
 
         <TransactionHistory contract={contract} />
+        <EventViewer contract={contract} />
       </Box>
 
       <Dialog open={confirmationOpen} onClose={() => setConfirmationOpen(false)}>
