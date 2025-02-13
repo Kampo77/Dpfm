@@ -15,6 +15,7 @@
     "web3": "^1.9.0"
   },
   "scripts": {
+    "prestart": "cd .. && npx hardhat compile && node scripts/copyArtifacts.js",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

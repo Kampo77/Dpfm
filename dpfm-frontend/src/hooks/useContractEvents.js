@@ -4,65 +4,79 @@ import { useNotification } from '../contexts/NotificationContext';
 
 export const useContractEvents = (contract) => {
   const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { showNotification } = useNotification();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!contract) return;
 
-    const handleTransaction = async (user, amount, category, isExpense, event) => {
-      try {
-        const block = await event.getBlock();
-        const timestamp = new Date(block.timestamp * 1000);
-        
-        const newEvent = {
+    const eventTypes = {
+      TransactionAdded: {
+        handler: (user, amount, category, isExpense, event) => ({
           type: 'TransactionAdded',
           user,
           amount: ethers.utils.formatEther(amount),
           category,
           isExpense,
-          timestamp,
-          transactionHash: event.transactionHash
-        };
-
-        setEvents(prev => [newEvent, ...prev]);
-        showNotification('success', `New transaction: ${newEvent.amount} ETH - ${category}`);
-      } catch (error) {
-        setError(error);
-        showNotification('error', 'Failed to process transaction event');
-      }
-    };
-
-    const handleBudgetUpdate = async (user, newLimit, event) => {
-      try {
-        const block = await event.getBlock();
-        const timestamp = new Date(block.timestamp * 1000);
-
-        const newEvent = {
+          timestamp: new Date(),
+          hash: event.transactionHash
+        }),
+        notification: (event) => `New ${event.isExpense ? 'expense' : 'income'}: ${event.amount} ETH`
+      },
+      BudgetUpdated: {
+        handler: (user, newLimit, event) => ({
           type: 'BudgetUpdated',
           user,
           newLimit: ethers.utils.formatEther(newLimit),
-          timestamp,
-          transactionHash: event.transactionHash
-        };
-
-        setEvents(prev => [newEvent, ...prev]);
-        showNotification('info', `Budget updated to: ${newEvent.newLimit} ETH`);
-      } catch (error) {
-        setError(error);
-        showNotification('error', 'Failed to process budget update event');
+          timestamp: new Date(),
+          hash: event.transactionHash
+        }),
+        notification: (event) => `Budget updated to ${event.newLimit} ETH`
       }
     };
 
-    contract.on("TransactionAdded", handleTransaction);
-    contract.on("BudgetUpdated", handleBudgetUpdate);
+    const subscribeToEvents = () => {
+      Object.entries(eventTypes).forEach(([eventName, { handler, notification }]) => {
+        contract.on(eventName, (...args) => {
+          const event = handler(...args);
+          setEvents(prev => [event, ...prev]);
+          showNotification('success', notification(event));
+        });
+      });
+    };
+
+    const loadHistoricalEvents = async () => {
+      try {
+        const filter = {
+          fromBlock: 0,
+          toBlock: 'latest'
+        };
+
+        const events = await Promise.all(
+          Object.keys(eventTypes).map(async (eventName) => {
+            const logs = await contract.queryFilter(eventName, filter.fromBlock, filter.toBlock);
+            return logs.map(log => {
+              const parsed = contract.interface.parseLog(log);
+              return eventTypes[eventName].handler(...parsed.args, log);
+            });
+          })
+        );
+
+        setEvents(events.flat().sort((a, b) => b.timestamp - a.timestamp));
+      } catch (error) {
+        showNotification('error', 'Failed to load historical events');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    subscribeToEvents();
+    loadHistoricalEvents();
 
     return () => {
-      contract.off("TransactionAdded", handleTransaction);
-      contract.off("BudgetUpdated", handleBudgetUpdate);
+      contract.removeAllListeners();
     };
   }, [contract]);
 
-  return { events, isLoading, error };
+  return { events, loading };
 };

@@ -26,4 +26,11 @@ export class Web3Handler {
     return await this.provider.getNetwork();
   }
 
-  async listenToAccountChanges(
+  listenToAccountChanges(callback) {
+    if (!window.ethereum) return;
+    
+    window.ethereum.on('accountsChanged', (accounts) => {
+      callback(accounts[0] || null);
+    });
+  }
+}

@@ -27,6 +27,8 @@ import { ROLES } from '../utils/permissionManager';
 import RoleBasedComponent from './RoleBasedComponent';
 import { Web3Handler } from '../utils/web3Handler';
 import EventViewer from './EventViewer';
+import { useContract } from '../hooks/useContract';
+import { CONTRACT_CONFIG } from '../config/contract';
 
 const FinancialDashboard = ({ contractAddress, userRole }) => {
   const { showNotification } = useNotification();
@@ -44,6 +46,7 @@ const FinancialDashboard = ({ contractAddress, userRole }) => {
   const [web3Handler] = useState(() => new Web3Handler());
   const [currentTransaction, setCurrentTransaction] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [contract, setContract] = useState(null);
 
   const [newTransaction, setNewTransaction] = useState({
     amount: '',
@@ -73,6 +76,33 @@ const FinancialDashboard = ({ contractAddress, userRole }) => {
     };
 
     init();
+  }, []);
+
+  useEffect(() => {
+    const initContract = async () => {
+      if (window.ethereum) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x539',  // 1337 in hex
+            chainName: 'Localhost 8545',
+            nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+            rpcUrls: ['http://localhost:8545'],
+          }]
+        });
+
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const contractInstance = new ethers.Contract(
+          CONTRACT_CONFIG.address,
+          CONTRACT_CONFIG.abi,
+          signer
+        );
+        setContract(contractInstance);
+      }
+    };
+
+    initContract();
   }, []);
 
   const loadTransactions = async () => {
@@ -164,11 +194,23 @@ const FinancialDashboard = ({ contractAddress, userRole }) => {
     }
   };
 
-  const handleTransactionSubmit = async (transaction) => {
-    setConfirmDialog({
-      open: true,
-      transaction
-    });
+  const handleTransactionSubmit = async (transactionData) => {
+    if (!contract) return;
+    
+    setLoading(true);
+    try {
+      const tx = await contract.addTransaction(
+        ethers.utils.parseEther(transactionData.amount),
+        transactionData.category,
+        transactionData.description,
+        transactionData.isExpense
+      );
+      await tx.wait();
+    } catch (error) {
+      console.error('Transaction failed:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleConfirm = async () => {
@@ -183,19 +225,9 @@ const FinancialDashboard = ({ contractAddress, userRole }) => {
     }
   };
 
-  const handleTransactionSubmit = async (transactionData) => {
-    try {
-      const tx = await contract.addTransaction(
-        ethers.utils.parseEther(transactionData.amount),
-        transactionData.category,
-        transactionData.description,
-        transactionData.isExpense
-      );
-      setCurrentTransaction(tx);
-    } catch (error) {
-      console.error('Transaction failed:', error);
-    }
-  };
+  if (contractError) {
+    return <Box>Error loading contract: {contractError}</Box>;
+  }
 
   return (
     <RoleBasedContainer isAuthorized={isAuthorized} currentRole={userRole}>

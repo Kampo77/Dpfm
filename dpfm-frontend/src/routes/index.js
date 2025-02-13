@@ -1,32 +1,49 @@
+import React from 'react';
 import { Navigate } from 'react-router-dom';
-import FinancialDashboard from '../components/FinancialDashboard';
-import AdminPanel from '../components/AdminPanel';
-import TransactionHistory from '../components/TransactionHistory';
-import NotFound from '../pages/NotFound';
+import AuthGuard from '../guards/AuthGuard';
+import DashboardLayout from '../components/DashboardLayout';
+import { NotFoundPage, UnauthorizedPage } from '../pages/ErrorPages';
+import Dashboard from '../pages/Dashboard';
+import Transactions from '../pages/Transactions';
+import AdminPanel from '../pages/AdminPanel';
 
 export const routes = [
   {
     path: '/',
-    element: <FinancialDashboard />,
-    requiresAuth: true
+    element: (
+      <AuthGuard>
+        <DashboardLayout>
+          <Dashboard />
+        </DashboardLayout>
+      </AuthGuard>
+    ),
   },
   {
     path: '/transactions',
-    element: <TransactionHistory />,
-    requiresAuth: true
+    element: (
+      <AuthGuard>
+        <DashboardLayout>
+          <Transactions />
+        </DashboardLayout>
+      </AuthGuard>
+    ),
   },
   {
     path: '/admin',
-    element: <AdminPanel />,
-    requiresAuth: true,
-    requiresOwner: true
+    element: (
+      <AuthGuard requiredRole="ADMIN">
+        <DashboardLayout>
+          <AdminPanel />
+        </DashboardLayout>
+      </AuthGuard>
+    ),
   },
   {
-    path: '/404',
-    element: <NotFound />
+    path: '/unauthorized',
+    element: <UnauthorizedPage />,
   },
   {
     path: '*',
-    element: <Navigate to="/404" replace />
-  }
+    element: <NotFoundPage />,
+  },
 ];
