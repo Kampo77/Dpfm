@@ -6,23 +6,39 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        version: "0.8.0", // для контрактов, использующих 0.8.0
+        version: "0.8.0",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200
+          }
+        }
       },
       {
-        version: "0.8.28", // для контрактов, использующих 0.8.28, например Lock.sol
-      },
-    ],
+        version: "0.8.28",  // Added support for Lock.sol
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200
+          }
+        }
+      }
+    ]
   },
   paths: {
-    sources: "./contracts", // Исправляем путь
+    sources: "./contracts",
   },
   networks: {
     sepolia: {
-      url: process.env.SEPOLIA_RPC_URL || "https://eth-sepolia.g.alchemy.com/v2/7YYv_vbrvi_fkKxJFOkr0k28OqtPMBg2",
-      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-    },
+      url: process.env.SEPOLIA_RPC_URL,
+      accounts: [process.env.PRIVATE_KEY],
+      gasPrice: 100000000,  // 0.1 gwei
+      gas: 1500000,         // уменьшенный лимит газа
+      maxFeePerGas: 100000000,
+      maxPriorityFeePerGas: 100000000
+    }
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY || "",
-  },
+    apiKey: process.env.ETHERSCAN_API_KEY
+  }
 };

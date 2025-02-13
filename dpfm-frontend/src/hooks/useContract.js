@@ -1,20 +1,34 @@
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { useWeb3 } from '../context/Web3Context';
-import { CONTRACT_ADDRESS } from '../contracts/addresses';
-import { FINANCIAL_MANAGER_ABI } from '../contracts/abis';
+import FinancialManager from '../artifacts/contracts/FinancialManager.sol/FinancialManager.json';
 
-export const useContract = () => {
-  const { provider, account } = useWeb3();
+export const useContract = (contractAddress) => {
+  const [contract, setContract] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const contract = useMemo(() => {
-    if (!provider || !account) return null;
-    return new ethers.Contract(
-      CONTRACT_ADDRESS,
-      FINANCIAL_MANAGER_ABI,
-      provider.getSigner()
-    );
-  }, [provider, account]);
+  useEffect(() => {
+    const initContract = async () => {
+      try {
+        if (typeof window.ethereum !== 'undefined') {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const contract = new ethers.Contract(
+            contractAddress,
+            FinancialManager.abi,
+            signer
+          );
+          setContract(contract);
+        }
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  return contract;
+    initContract();
+  }, [contractAddress]);
+
+  return { contract, error, loading };
 };

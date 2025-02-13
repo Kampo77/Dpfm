@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// Import OpenZeppelin библиотеки для безопасности и контроля доступа.
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -12,10 +11,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
  * @dev Контракт для управления транзакциями, бюджетами и выводом комиссий.
  * @notice Контракт использует роль AUTHORIZED_ROLE для контроля доступа и включает проверки ошибок,
  * защиту от reentrancy и обработку переполнения с помощью SafeMath.
- *
- * Deployment Instructions:
- * 1. Установите зависимости: npm install \@openzeppelin/contracts
- * 2. Скомпилируйте контракт: npx hardhat compile
  */
 contract FinancialManager is Ownable, AccessControl, ReentrancyGuard {
     using SafeMath for uint256;

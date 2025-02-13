@@ -1,34 +1,35 @@
 const hre = require("hardhat");
 
 async function main() {
-  // Получаем фабрику контракта FinancialManager.
+  console.log("Deploying FinancialManager with minimal gas settings...");
+  
   const FinancialManager = await hre.ethers.getContractFactory("FinancialManager");
-  console.log("Deploying FinancialManager...");
+  const financialManager = await FinancialManager.deploy({
+    gasLimit: 1500000,
+    maxFeePerGas: 100000000,      // 0.1 gwei
+    maxPriorityFeePerGas: 100000000
+  });
+  
+  // Wait for deployment transaction to be mined
+  await financialManager.waitForDeployment();
+  console.log("FinancialManager deployed to:", await financialManager.getAddress());
 
-  // Разворачиваем контракт.
-  const financialManager = await FinancialManager.deploy();
-  await financialManager.deployed();
-  console.log("FinancialManager deployed to:", financialManager.address);
-
-  // Автоматическая верификация контракта, если сеть не локальная.
-  if (hre.network.name !== "hardhat" && hre.network.name !== "localhost") {
-    console.log("Waiting for block confirmations...");
-    await financialManager.deployTransaction.wait(5); // ждём 5 подтверждений
-
-    try {
-      console.log("Verifying contract...");
-      await hre.run("verify:verify", {
-        address: financialManager.address,
-        constructorArguments: [],
-      });
-      console.log("Contract verified successfully.");
-    } catch (error) {
-      console.error("Verification failed:", error);
-    }
+  // Wait for only 1 confirmation to save costs
+  console.log("Waiting for 1 block confirmation...");
+  const deployTx = financialManager.deploymentTransaction();
+  await deployTx.wait(1);
+  
+  console.log("Verifying contract...");
+  try {
+    await hre.run("verify:verify", {
+      address: await financialManager.getAddress(),
+      constructorArguments: [],
+    });
+  } catch (error) {
+    console.log("Verification failed:", error);
   }
 }
 
-// Запускаем основной скрипт и обрабатываем возможные ошибки.
 main()
   .then(() => process.exit(0))
   .catch((error) => {
