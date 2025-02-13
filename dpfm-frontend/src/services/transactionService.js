@@ -1,33 +1,48 @@
-import { utils } from 'ethers';
+import { ethers } from 'ethers';
+import { ERROR_TYPES } from '../utils/errorHandling';
 
-export const transactionService = {
-  async addTransaction(contract, amount, category, description, isIncome) {
+export class TransactionService {
+  constructor(contract) {
+    this.contract = contract;
+  }
+
+  async addTransaction(data) {
     try {
-      const tx = await contract.addTransaction(
-        utils.parseEther(amount.toString()),
-        category,
-        description,
-        isIncome
+      const tx = await this.contract.addTransaction(
+        ethers.utils.parseEther(data.amount),
+        data.category,
+        data.description,
+        data.isExpense,
+        {
+          gasLimit: 200000,
+        }
       );
-      return await tx.wait();
-    } catch (error) {
-      throw new Error(`Transaction failed: ${error.message}`);
-    }
-  },
 
-  async getUserTransactions(contract) {
-    try {
-      const transactions = await contract.getUserTransactions();
-      return transactions.map(tx => ({
-        id: tx.id.toString(),
-        amount: utils.formatEther(tx.amount),
-        category: tx.category,
-        description: tx.description,
-        timestamp: new Date(tx.timestamp.toNumber() * 1000),
-        isIncome: tx.isIncome
-      }));
+      const receipt = await tx.wait();
+      return {
+        success: true,
+        hash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber
+      };
     } catch (error) {
-      throw new Error(`Failed to fetch transactions: ${error.message}`);
+      throw {
+        type: ERROR_TYPES.TRANSACTION,
+        message: error.message,
+        code: error.code
+      };
     }
   }
-};
+
+  async getBudget() {
+    try {
+      const budget = await this.contract.getBudget();
+      return ethers.utils.formatEther(budget);
+    } catch (error) {
+      throw {
+        type: ERROR_TYPES.CONTRACT,
+        message: 'Failed to fetch budget',
+        details: error.message
+      };
+    }
+  }
+}

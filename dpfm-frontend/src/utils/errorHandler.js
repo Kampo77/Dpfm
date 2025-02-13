@@ -1,8 +1,9 @@
-export const ERROR_TYPES = {
+export const ErrorTypes = {
   TRANSACTION: 'TRANSACTION',
-  CONNECTION: 'CONNECTION',
+  VALIDATION: 'VALIDATION',
+  NETWORK: 'NETWORK',
   CONTRACT: 'CONTRACT',
-  VALIDATION: 'VALIDATION'
+  AUTHORIZATION: 'AUTHORIZATION'
 };
 
 export class DAppError extends Error {
@@ -10,35 +11,38 @@ export class DAppError extends Error {
     super(message);
     this.type = type;
     this.details = details;
+    this.timestamp = new Date();
+  }
+
+  static createTransactionError(message, details) {
+    return new DAppError(ErrorTypes.TRANSACTION, message, details);
+  }
+
+  static createValidationError(message, details) {
+    return new DAppError(ErrorTypes.VALIDATION, message, details);
   }
 }
 
-export const handleError = (error) => {
-  if (error instanceof DAppError) {
-    return {
-      message: error.message,
-      type: error.type,
-      details: error.details
-    };
+export const handleContractError = (error) => {
+  if (error.code === -32603) {
+    return new DAppError(
+      ErrorTypes.TRANSACTION,
+      'Transaction failed. Please check your balance and gas settings.',
+      { originalError: error.message }
+    );
   }
 
   if (error.code === 4001) {
-    return {
-      message: 'Transaction rejected by user',
-      type: ERROR_TYPES.TRANSACTION
-    };
+    return new DAppError(
+      ErrorTypes.TRANSACTION,
+      'Transaction rejected by user',
+      { userCancelled: true }
+    );
   }
 
-  if (error.code === -32603) {
-    return {
-      message: 'Transaction failed. Please check gas settings',
-      type: ERROR_TYPES.TRANSACTION
-    };
-  }
-
-  return {
-    message: 'An unexpected error occurred',
-    type: ERROR_TYPES.CONTRACT,
-    details: error.message
-  };
+  return new DAppError(
+    ErrorTypes.CONTRACT,
+    'Contract operation failed',
+    { originalError: error.message }
+  );
 };

@@ -1,68 +1,86 @@
 import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import { Box, Button, CircularProgress } from '@mui/material';
-import FormField from './FormField';
-import { validateTransactionForm } from '../utils/formValidation';
-import { useNotification } from '../contexts/NotificationContext';
+import { useTransaction } from '../hooks/useTransaction';
+import { SecurityService } from '../services/SecurityService';
+import { validateTransaction } from '../utils/validators';
+import { handleContractError } from '../utils/errorHandler';
+import {
+  TextField,
+  Button,
+  Box,
+  CircularProgress,
+  Alert
+} from '@mui/material';
 
-function TransactionForm({ onSubmit, loading }) {
-  const { showNotification } = useNotification();
+function TransactionForm({ contract }) {
+  const { executeTransaction, loading } = useTransaction(contract);
+  const securityService = new SecurityService(contract);
   const [formData, setFormData] = useState({
     amount: '',
     category: '',
     description: ''
   });
-  const [errors, setErrors] = useState({});
+  const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validationErrors = validateTransactionForm(formData);
-    
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      showNotification('error', 'Please correct form errors');
-      return;
-    }
+    setError(null);
 
     try {
-      await onSubmit(formData);
+      // Validate input
+      const validation = validateTransaction(formData);
+      if (!validation.isValid) {
+        throw new Error(Object.values(validation.errors)[0]);
+      }
+
+      // Security checks
+      await securityService.validateTransactionSecurity(formData);
+
+      // Execute transaction
+      await executeTransaction(formData);
       setFormData({ amount: '', category: '', description: '' });
-      setErrors({});
-      showNotification('success', 'Transaction submitted successfully');
     } catch (error) {
-      showNotification('error', error.message || 'Failed to submit transaction');
+      const handledError = handleContractError(error);
+      setError(handledError.message);
     }
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-      <FormField
+    <Box component="form" onSubmit={handleSubmit}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      <TextField
+        fullWidth
         label="Amount (ETH)"
-        type="number"
         value={formData.amount}
         onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-        error={errors.amount}
         disabled={loading}
+        margin="normal"
         required
       />
 
-      <FormField
+      <TextField
+        fullWidth
         label="Category"
         value={formData.category}
         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-        error={errors.category}
         disabled={loading}
+        margin="normal"
         required
       />
 
-      <FormField
+      <TextField
+        fullWidth
         label="Description"
-        multiline
-        rows={3}
         value={formData.description}
         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-        error={errors.description}
         disabled={loading}
+        margin="normal"
+        multiline
+        rows={3}
       />
 
       <Button
@@ -76,10 +94,5 @@ function TransactionForm({ onSubmit, loading }) {
     </Box>
   );
 }
-
-TransactionForm.propTypes = {
-  onSubmit: PropTypes.func.isRequired,
-  loading: PropTypes.bool
-};
 
 export default TransactionForm;

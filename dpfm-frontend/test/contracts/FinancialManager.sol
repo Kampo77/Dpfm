@@ -1,22 +1,27 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+pragma solidity ^0.8.0;
 
-/**
- * @title FinancialManager
- * @dev Контракт для управления транзакциями, бюджетами и выводом комиссий.
- * @notice Контракт использует роль AUTHORIZED_ROLE для контроля доступа и включает проверки ошибок,
- * защиту от reentrancy и обработку переполнения с помощью SafeMath.
- */
 contract FinancialManager is Ownable, AccessControl, ReentrancyGuard {
     using SafeMath for uint256;
 
-    /// @notice Роль для авторизованных пользователей.
-    bytes32 public constant AUTHORIZED_ROLE = keccak256("AUTHORIZED_ROLE");
+    uint256 private constant MAX_INT = 2**256 - 1;
+    mapping(address => uint256) private lastActionTime;
+    uint256 private constant COOLDOWN_PERIOD = 1 minutes;
+
+    modifier withCooldown() {
+        require(
+            block.timestamp >= lastActionTime[msg.sender] + COOLDOWN_PERIOD,
+            "Please wait before next action"
+        );
+        _;
+        lastActionTime[msg.sender] = block.timestamp;
+    }
+
+    function addTransaction(uint256 amount) external nonReentrant withCooldown {
+        require(amount > 0 && amount < MAX_INT, "Invalid amount");
+        // ... existing implementation
+    }
 
     /// @notice Структура для хранения деталей транзакции.
     struct Transaction {
